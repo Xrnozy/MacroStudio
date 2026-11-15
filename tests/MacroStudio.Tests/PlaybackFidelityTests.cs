@@ -71,4 +71,41 @@ public class PlaybackFidelityTests(ITestOutputHelper o)
         Assert.InRange(sink.Sent[2].At, 299, 301);     // 50 ms overrun fits in the 200 ms gap: the next move stays on its recorded time (was: fired at 150)
         Assert.InRange(sink.Sent[4].At - sink.Sent[3].At, 199, 201);   // 200 ms overrun swallows the 30 ms gap: the next move fires as the step ends, no burst, no extra delay
     }
+
+    static void Eco(bool on) => MacroStudio.Native.NativeMethods.SetPowerThrottling(on);   // on = let Windows throttle this process
+
+    /// <summary>Real SendInput of key presses (F24, harmless) through Player + InputInjector, read back by a low-level hook: when do they really arrive?</summary>
+    double[] LiveKeyLateness(bool eco)
+    {
+        var desk = MacroStudio.Native.Screens.Current(); if (desk.Virtual.Width == 0) return [];
+        Eco(eco);
+        var got = new List<(long T, EventKind K)>();
+        using var hooks = new MacroStudio.Native.InputHooks(r => { if (r.Vk == 0x87) lock (got) got.Add((r.Ticks, r.Kind)); }) { IgnoreInjected = false };
+        hooks.Start();
+        var ev = new List<MacroEvent>(); double t = 0;
+        for (int i = 0; i < 40; i++) { t += 60; ev.Add(new MacroEvent(t, EventKind.KeyDown, Vk: 0x87)); t += 30; ev.Add(new MacroEvent(t, EventKind.KeyUp, Vk: 0x87)); }
+        var p = new Player(new MacroStudio.Native.InputInjector(desk.Virtual));
+        long t0 = Stopwatch.GetTimestamp();
+        p.Run(ev.ToArray(), 0, ev.Count, 1);
+        Thread.Sleep(200);
+        Eco(false);
+        lock (got) return got.Select((g, i) => (g.T - got[0].T) * 1000.0 / Stopwatch.Frequency - (ev[i].T - ev[0].T)).ToArray();
+    }
+
+    [Fact]
+    public void The_power_throttling_opt_out_really_reaches_windows()
+    {
+        // it used to throw MarshalDirectiveException inside a try/catch, so playback and recording were never opted out
+        Assert.True(MacroStudio.Native.NativeMethods.SetPowerThrottling(false));
+    }
+
+    [Fact]
+    public void Live_key_presses_arrive_on_their_recorded_times_even_when_the_process_is_throttled()
+    {
+        var a = LiveKeyLateness(false); if (a.Length == 0) return;
+        var b = LiveKeyLateness(true);
+        o.WriteLine($"normal : n={a.Length} mean {a.Average():0.0} max {a.Max():0.0} ms");
+        o.WriteLine($"eco    : n={b.Length} mean {b.Average():0.0} max {b.Max():0.0} ms");
+        Assert.True(b.Max() < 15, $"throttled: key presses up to {b.Max():0} ms late");
+    }
 }

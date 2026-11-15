@@ -60,5 +60,19 @@ internal static class NativeMethods
     [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(nint hMonitor, int dpiType, out uint dpiX, out uint dpiY);
     [DllImport("user32.dll")] public static extern bool SystemParametersInfo(uint action, uint param, ref uint value, uint winIni);
     [DllImport("winmm.dll")] public static extern uint timeBeginPeriod(uint ms);
+
+    [StructLayout(LayoutKind.Sequential)] struct PowerThrottling { public uint Version, ControlMask, StateMask; }
+    [DllImport("kernel32.dll")] static extern bool SetProcessInformation(nint process, int cls, ref PowerThrottling info, int size);
+
+    /// <summary>
+    /// Opt this process out of Windows power throttling (EcoQoS and timer coalescing). A minimized window puts a process in "eco" mode, which stretches timers to
+    /// 100+ ms: key presses and clicks then arrive late. The app minimizes itself while a macro plays, so playback and recording both call this.
+    /// (The call used to take a ValueTuple, which cannot be marshalled: it threw, the exception was swallowed, and the opt-out never happened.)
+    /// </summary>
+    public static bool SetPowerThrottling(bool allowed)
+    {
+        var st = new PowerThrottling { Version = 1, ControlMask = 5, StateMask = allowed ? 5u : 0u };   // 1 = execution speed, 4 = ignore timer resolution
+        try { return SetProcessInformation(System.Diagnostics.Process.GetCurrentProcess().Handle, 4, ref st, 12); } catch { return false; }
+    }
     [DllImport("winmm.dll")] public static extern uint timeEndPeriod(uint ms);
 }

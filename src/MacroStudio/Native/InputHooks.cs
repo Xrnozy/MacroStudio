@@ -79,7 +79,7 @@ public sealed unsafe class InputHooks : IDisposable
         ready.Wait();
         if (error != null) { _thread.Join(); _thread = null; throw error; }
         _stop = false;
-        if (PollFallback) { _raw = new RawMouse(); _raw.Start(); NoPowerThrottling(); timeBeginPeriod(1); _poll = new Thread(Poll) { IsBackground = true, Priority = ThreadPriority.Highest, Name = "InputPoll" }; _poll.Start(); }
+        if (PollFallback) { _raw = new RawMouse(); _raw.Start(); SetPowerThrottling(false); timeBeginPeriod(1); _poll = new Thread(Poll) { IsBackground = true, Priority = ThreadPriority.Highest, Name = "InputPoll" }; _poll.Start(); }
     }
 
     public void Dispose()

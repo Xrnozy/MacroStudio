@@ -114,6 +114,7 @@ public sealed class Player
         _thread = new Thread(() =>
         {
             NativeMethods.timeBeginPeriod(1);
+            NativeMethods.SetPowerThrottling(false);   // the app is minimized while a macro plays: without this Windows stretches timers and key presses arrive late
             try { RunCore(events, from, to, loops); }
             finally { NativeMethods.timeEndPeriod(1); }
         }) { IsBackground = true, Priority = ThreadPriority.AboveNormal, Name = "Playback" };
