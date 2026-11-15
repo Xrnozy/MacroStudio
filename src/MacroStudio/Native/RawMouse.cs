@@ -39,13 +39,13 @@ public sealed class RawMouse : IDisposable
     }
 
     readonly object _l = new();
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<nint, RawMouse> Owners = new();
     // One window class for the whole process (it can only be registered once), one static delegate that lives forever, routed to the instance that owns the window.
     static readonly WndProc SProc = (h, m, w, l) =>
     {
-        var o = Owners.GetValueOrDefault(h);
+        Owners.TryGetValue(h, out RawMouse? o);
         return o is not null ? o.Proc(h, m, w, l) : DefWindowProcW(h, m, w, l);
     };
-    static readonly System.Collections.Concurrent.ConcurrentDictionary<nint, RawMouse> Owners = new();
     static bool _registered;
     static readonly object Reg = new();
     Thread? _thread;
