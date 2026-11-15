@@ -253,7 +253,7 @@ public partial class MainWindow
                     "Macro Studio", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
             where = new StepOptions { RelX = rx, RelY = ry }.AnchorText + " of the target";
         }
-        var step = new StepOptions { RelX = rx, RelY = ry, FallbackX = down.X, FallbackY = down.Y, Move = MoveMode.Optimized };
+        var step = new StepOptions { RelX = rx, RelY = ry, FallbackX = down.X, FallbackY = down.Y, Move = MoveMode.FollowPath };
         _s.ReplaceWith([down.Id], [new MacroEvent(down.T, EventKind.TargetClick, Button: down.Button, Delta: 10000, Target: id, Step: step)]);
         SetStatus($"Converted to an adaptive click on '{target.Name}' at {where}. In the inspector you can set retries, verification, and 'Click the recorded position' as a fallback.");
     }
@@ -277,7 +277,7 @@ public partial class MainWindow
         {
             var item = new MenuItem { Header = string.IsNullOrWhiteSpace(t.Group) ? t.Name : $"{t.Group} / {t.Name}" };
             var tid = t.Id;
-            item.Click += (_, _) => _s.InsertBlock([new MacroEvent(0, kind, Delta: 10000, Target: tid, Step: kind == EventKind.TargetClick ? new StepOptions { Move = MoveMode.Optimized } : null)], _s.PlayheadMs, ripple: true);
+            item.Click += (_, _) => _s.InsertBlock([new MacroEvent(0, kind, Delta: 10000, Target: tid, Step: kind == EventKind.TargetClick ? new StepOptions { Move = MoveMode.FollowPath } : null)], _s.PlayheadMs, ripple: true);
             menu.Items.Add(item);
         }
     }

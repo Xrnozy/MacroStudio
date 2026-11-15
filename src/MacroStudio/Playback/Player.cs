@@ -196,7 +196,13 @@ public sealed class Player
                     }
                     if (next == FlowStep.Stop) { _stop = true; break; }
                     if (next == FlowStep.Restart) { ReleaseAll(); Flow?.Restarting(); i = from; _resync = true; continue; }
-                    if (e.IsTarget() || e.Kind == EventKind.When) _resync = true; // a step that waited for the screen must not make the following events "catch up"
+                    if ((e.IsTarget() || e.Kind == EventKind.When) && i + 1 < to)
+                    {
+                        // The step took longer than its recorded slot (it waited for the screen, glided, settled). Keep the recorded timeline: the next events stay on their
+                        // original times when the overrun fits inside the recorded gap, and only the shortfall is shifted, so nothing bursts out and nothing is skipped.
+                        double late = _clock.NowMs - (t0 + (ev[i + 1].T - baseT) / Volatile.Read(ref _speed));
+                        if (late > 0) t0 += late;
+                    }
                     i++;
                 }
             }

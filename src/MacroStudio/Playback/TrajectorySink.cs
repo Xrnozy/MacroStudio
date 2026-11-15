@@ -52,7 +52,7 @@ public sealed class TrajectorySink(IInputSink inner, IReadOnlyList<MacroEvent> e
             Carry(i, e);
             bool onlyMoves = i >= 0 && i < events.Count;
             for (int k = i + 1; onlyMoves && k < events.Count; k++) if (events[k].Kind != EventKind.MouseMove) onlyMoves = false;
-            _dropTail = onlyMoves && (e.Step?.Move ?? MoveMode.Optimized) == MoveMode.Optimized;
+            _dropTail = onlyMoves && (e.Step?.Move ?? MoveMode.FollowPath) == MoveMode.Optimized;
             return;
         }
         if (e.HasPos() && !e.IsTarget())

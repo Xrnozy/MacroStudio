@@ -388,7 +388,7 @@ public class TrajectoryTests
         // the shape of a real saved macro: the user circled around, then the click has no step settings at all
         var l = new List<MacroEvent>();
         for (int k = 0; k < 60; k++) l.Add(new MacroEvent(k * 20, EventKind.MouseMove, X: (int)(500 + 300 * Math.Cos(k / 60.0 * 6.28)), Y: (int)(500 + 300 * Math.Sin(k / 60.0 * 6.28))));
-        l.Add(new MacroEvent(1300, EventKind.TargetClick, Target: "t", Delta: 3000, Button: MouseBtn.Left));
+        l.Add(new MacroEvent(1300, EventKind.TargetClick, Target: "t", Delta: 3000, Button: MouseBtn.Left, Step: new StepOptions { Move = MoveMode.Optimized }));   // the default is now FollowPath (the recorded path); this test is about the explicit direct mode
         var ev = l.ToArray();
         var (sent, _) = Replay(ev, new Fin { Center = () => (900, 500) });
         Assert.Empty(sent);                                                  // not one point of the loop is replayed

@@ -38,8 +38,8 @@ public sealed record StepOptions
     /// <summary>Minimum time between two clicks on the same spot of the same target. Stops accidental double clicks from unstable detection.</summary>
     public int MinRepeatMs { get; init; } = 250;
 
-    /// <summary>How the mouse travels to the target. Default Optimized: straight to the target, none of the recorded wandering. Jump (replay the recording, then jump) must be chosen explicitly.</summary>
-    public MoveMode Move { get; init; } = MoveMode.Optimized;
+    /// <summary>How the mouse travels to the target. Default FollowPath: the recorded movement, played at its recorded times and bent to where the target is now. Optimized (straight to the target) must be chosen explicitly.</summary>
+    public MoveMode Move { get; init; } = MoveMode.FollowPath;
     /// <summary>Duration of a glide in milliseconds at normal speed; 0 = automatic from the distance.</summary>
     public int GlideMs { get; init; }
 

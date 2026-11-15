@@ -311,7 +311,7 @@ public sealed class StepExecutor(IInputSink inner, ITargetFinder finder, IClock 
             if (d <= tol)
             {
                 if (arrived < 0) { arrived = clock.NowMs; seq = trk.Seq; }
-                if (trk.Seq != seq || clock.NowMs - arrived >= 120) return t;   // a fresh look still agrees
+                if (!trk.Moving(clock.NowMs) || trk.Seq != seq || clock.NowMs - arrived >= 120) return t;   // at rest and on it: click now (the sighting was already confirmed); a moving target waits for a fresh look
                 Pause(8);                                                      // on the spot: just wait for that look, do not move
                 continue;
             }
@@ -375,7 +375,7 @@ public sealed class StepExecutor(IInputSink inner, ITargetFinder finder, IClock 
         {
             var mv = new MacroEvent(0, EventKind.MouseMove, X: ix, Y: iy);
             inner.Send(in mv);
-            Pause(12);
+            Pause(3);
             var c = readCursor();
             int ex = x - c.X, ey = y - c.Y;
             if (Math.Abs(ex) <= 1 && Math.Abs(ey) <= 1) return (ix, iy);
