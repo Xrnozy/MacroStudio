@@ -175,9 +175,9 @@ internal static class PatchVoting
             if (tried.Any(t => Math.Abs(t.X - cx) <= slack && Math.Abs(t.Y - cy) <= slack)) return false;
             tried.Add((cx, cy));
             var hits = Verify(ctx, info, sc, cx, cy, 4, Prepared.Of(tpl).ColorTolerance * 1.0 + 5, minVisible, out double same);
-            var proven = hits.Where(h => h.Informed).ToList();
+            var proven = Rigid(hits.Where(h => h.Informed).ToList());
             double visible = Share(hits, info);
-            if (proven.Sum(h => h.Part) >= MinPatches && visible >= minVisible && Spread(proven, sc) && !LookAlike(proven.Sum(h => h.Part) / info.Informed, same)) { cands.Add((cx, cy, hits)); return true; }
+            if (proven.Sum(h => h.Part) >= MinPatches && Textured(proven, info, minVisible) && visible >= minVisible && Spread(proven, sc) && !LookAlike(proven.Sum(h => h.Part) / info.Informed, same)) { cands.Add((cx, cy, hits)); return true; }
             return false;
         }
         for (int inst = 0; inst < 3; inst++)
@@ -217,9 +217,9 @@ internal static class PatchVoting
         {
             if (found.Any(f => Math.Abs(f.Rect.X - c.X) < tw * 0.75 && Math.Abs(f.Rect.Y - c.Y) < th * 0.75)) continue;
             var own = c.Hits.Where(h => !claimed.Contains((h.I, h.J))).ToList();
-            var ownProven = own.Where(h => h.Informed).ToList();
+            var ownProven = Rigid(own.Where(h => h.Informed).ToList());
             double uv = Share(own, info);
-            if (ownProven.Sum(h => h.Part) >= MinPatches && uv >= minVisible && Spread(ownProven, sc))
+            if (ownProven.Sum(h => h.Part) >= MinPatches && Textured(ownProven, info, minVisible) && uv >= minVisible && Spread(ownProven, sc))
             {
                 found.Add(new Detection(new Rect(Median(ownProven.Select(m => m.X)), Median(ownProven.Select(m => m.Y)), tw, th), uv * own.Average(m => m.Score), scale, "patches", uv));
                 foreach (var ow in own) claimed.Add((ow.I, ow.J));
@@ -236,13 +236,24 @@ internal static class PatchVoting
         var info = InfoOf(sc);
         if (info.Informed < MinPatches) return null;
         var hits = Verify(ctx, info, sc, topLeft.X, topLeft.Y, 6, Prepared.Of(tpl).ColorTolerance * 1.0 + 5, minVisible, out double same);
-        var proven = hits.Where(h => h.Informed).ToList();
+        var proven = Rigid(hits.Where(h => h.Informed).ToList());
         double visible = Share(hits, info);
-        if (proven.Sum(h => h.Part) < MinPatches || visible < minVisible || !Spread(proven, sc) || LookAlike(proven.Sum(h => h.Part) / info.Informed, same)) return null;
+        if (proven.Sum(h => h.Part) < MinPatches || !Textured(proven, info, minVisible) || visible < minVisible || !Spread(proven, sc) || LookAlike(proven.Sum(h => h.Part) / info.Informed, same)) return null;
         return new Detection(new Rect(Median(proven.Select(m => m.X)), Median(proven.Select(m => m.Y)), sc.W, sc.H), visible * hits.Average(m => m.Score), scale, "patches", visible);
     }
 
-    /// <summary>
+    /// <summary>Flat cells match any patch of the same colour, so they cannot carry the visible share alone: the detailed cells must cover it too.</summary>
+    static bool Textured(List<Hit> proven, Info info, double minVisible) => proven.Sum(h => h.Part) >= Math.Max(minVisible, 0.4) * info.Informed;
+
+    /// <summary>A button moves as one piece: patches that each slid to a different offset (repeated letter shapes in another label) are not evidence of it.</summary>
+    static List<Hit> Rigid(List<Hit> hits)
+    {
+        if (hits.Count == 0) return hits;
+        int mx = Median(hits.Select(h => h.X)), my = Median(hits.Select(h => h.Y));
+        return hits.Where(h => Math.Abs(h.X - mx) <= 2 && Math.Abs(h.Y - my) <= 2).ToList();
+    }
+
+        /// <summary>
     /// Cells that are really there at the candidate position, each with the offset it implies. Textured cells are
     /// searched in a small window; flat cells (which match everywhere and prove nothing) are only asked whether their
     /// own colour is still there — that is what makes the visible fraction honest: a cover over a flat part of the
@@ -294,7 +305,9 @@ internal static class PatchVoting
                 }
                 continue;
             }
-            using var seen = new Mat(ctx.Bgr, new Rect(px + used.X, py + used.Y, used.Width, used.Height));
+            var seenAt = new Rect(px + used.X, py + used.Y, used.Width, used.Height);
+            if (seenAt.X < 0 || seenAt.Y < 0 || seenAt.Right > bounds.Width || seenAt.Bottom > bounds.Height) continue;   // a part found at its expected spot may hang off the frame
+            using var seen = new Mat(ctx.Bgr, seenAt);
             var mean = Cv2.Mean(seen);
             // correlation ignores contrast, so also require roughly the same colour: a patch of another hue is a different thing, a lighter or slightly tinted one is not
             if (!ColorMath.Similar(mean, p.Mean, colorTol)) { if (Chroma(p.Mean) >= MinChroma) missed += p.Sd; continue; }

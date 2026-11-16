@@ -19,4 +19,5 @@
   </ItemGroup>
 
   <ItemGroup><ProjectReference Include="../../src/MacroStudio/MacroStudio.csproj" /></ItemGroup>
+  <ItemGroup><None Update="Assets/*.png" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>
